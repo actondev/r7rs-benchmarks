@@ -34,7 +34,6 @@ OSNAME="`( uname )`"
 
 # ecraven changed this to 5 minutes
 CPU_LIMIT=${CPU_LIMIT:-"300"}
-
 # The following definitions are not in use, but using them
 # might improve the script.
 
@@ -260,13 +259,18 @@ evaluate ()
                 ulimit -t ${CPU_LIMIT}
                 $EXEC "${TEMP}/$1.${EXTENSIONCOMP}" "${INPUTS}/$1.input"
                 status=$?
-                if [ $status -eq 137 ] # killed by ulimit timeout
+                if [ $status -ne 0 ] # killed by ulimit timeout
                 then
-                    echo "+!CSVLINE!+${2},$1,ULIMITKILLED"
-                elif [ $status -ne 0 ]
-                then
-                    echo "+!CSVLINE!+${2},$1,CRASHED"
-                fi
+		    make_src_code "scheme-implementation-name"
+		    # TODO do we need to copmile for implementations like guile 3?
+		    scheme_name=$($EXEC "${TEMP}/scheme-implementation-name.scm" /dev/null)
+		    if [ $status -eq 137 ] # killed by ulimit timeout
+		    then
+			echo "+!CSVLINE!+${scheme_name},$1,ULIMITKILLED"
+                    else
+			echo "+!CSVLINE!+${scheme_name},$1,CRASHED"
+                    fi
+		fi
                 i=`expr $i + 1`
             done
         fi
