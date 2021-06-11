@@ -1,5 +1,13 @@
 ;;;; kindly provided by mgubi (https://github.com/ecraven/r7rs-benchmarks/issues/55)
-(define (this-scheme-implementation-name) "s7")
+(define (this-scheme-implementation-name)
+  ;; (*s7* 'version) returns something like "s7 9.12, 8-Jun-2021"
+  ;; we parse it to return "s7 9.12 (8-Jun-2021)"
+  (let* ((v (*s7* 'version))
+	 (comma-pos (char-position #\, v)))
+    (format #f "~A (~A)"
+	    (substring v 0 comma-pos)
+	    (substring v (+ 2 comma-pos)))))
+
 (define exact-integer? integer?)
 (define (exact-integer-sqrt i) (let ((sq (floor (sqrt i)))) (values sq (- i (* sq sq)))))
 (define inexact exact->inexact)
@@ -82,3 +90,5 @@
                            (let-set! ,obj ',(car field) val)))))))
           fields)
        ',type)))
+
+(define (with-exception-handler handler thunk) (catch #t thunk handler))
