@@ -1,0 +1,6 @@
+Chez needed some r7rs compatibility files. These were taken form
+
+- https://github.com/ovenpasta/thunderchez/
+  (srfi s9 records)
+- https://github.com/ecraven/chez-scheme-libraries/
+  (scheme base) etc
