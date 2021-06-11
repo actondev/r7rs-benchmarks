@@ -103,6 +103,8 @@ setup ()
 
     esac
 
+    CHEZ_LIB_DRIS=${CHEZ_LIB_DRIS:-"./compatibility/chez/"}
+
     # For both Solaris and Linux machines.
 
     BIGLOO=${BIGLOO:-"bigloo"}
@@ -674,7 +676,7 @@ chez_exec ()
 {
     # remove import statement
     # sed -i -e 's/^(import (scheme.*)$//g' $1
-    time "${CHEZ}" --optimize-level 2 --compile-imported-libraries --libdirs /home/nex/scheme/chez --program "$1" < "$2"
+    time "${CHEZ}" --optimize-level 2 --compile-imported-libraries --libdirs "$CHEZ_LIB_DRIS" --program "$1" < "$2"
 }
 
 # -----------------------------------------------------------------------------

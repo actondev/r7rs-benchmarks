@@ -1,4 +1,16 @@
 *~
 .mosh
 .cache
+*.so
 outputs
+bak-*/
+bak/
+
+# repos cloned for chez & r7rs compatibility
+chez-scheme-libraries/
+thunderchez/
+
+# other schemes, built from source
+s7/
+gauche/
+/get-gauche.sh
