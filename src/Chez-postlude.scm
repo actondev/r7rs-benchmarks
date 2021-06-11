@@ -1,4 +1,5 @@
 (import
+ (rnrs programs)
  (only (chezscheme)
     machine-type
     scheme-version-number))
