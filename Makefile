@@ -18,6 +18,9 @@ index.html: all.csv
 results2csv:
 	./results2csv.sh $(SCHEMES)
 
+csv2png:
+	R -f csv2png.R
+
 clean:
 	rm -f results.* all.csv outputs/*
 

@@ -5,7 +5,7 @@ DIR="csv"
 ALL_ROWS="$DIR/all.rows.csv"
 ALL_TABLE="$DIR/all.csv"
 
-> "$ALL_ROWS"
+echo "scheme,test,time" > "$ALL_ROWS"
 > "$ALL_TABLE"
 
 for var in "$@"

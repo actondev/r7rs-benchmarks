@@ -1,0 +1,273 @@
+#+PROPERTY: header-args:sh :session *r7rs* :shell-type vterm
+
+#+begin_src sh
+scheme --version # chez version 9.5.2
+petite --version
+export CHEZ=scheme
+
+# built manually, or cloned repo
+export S7=./s7/s7
+export GAUCHE=./gauche/bin/gosh
+export SCHEME_LIBRARY_PATH=/usr/share/slib # for gauche. it was /usr/local/slib by default. uggh
+
+export GUILE=guile-3.0
+# or
+export GUILE=guile-2.2
+export GUILD=guild-2.2
+
+$S7
+$GAUCHE
+
+./bench chez 
+./bench chez fib # well, it's fast!
+./bench mit fib # well, it's fast!
+./bench guile sumfp # well, it's fast!
+
+./bench s7 all
+./bench guile all
+./bench gauche all
+./bench petite all # chez, but without the jit
+./bench mit all # this compiles
+
+make clean
+
+tests="array1 destruc fft fib fibc fibfp gcbench mbrot primes ray scheme"
+
+tests="array1 destruc fft fib"
+
+./bench "s7" "$tests"
+./bench "chez" "$tests"
+./bench "petite" "$tests"
+./bench "gauche" "$tests"
+./bench "mit" "$tests"
+./bench "guile" "$tests"
+
+make results2csv
+make csv2png
+
+./bench s7 sumfp # fast
+./bench s7 pi # fails without gmp support
+
+
+cat ./inputs/ack.input | $S7 /tmp/larcenous/S7/ack.scm # 22.762s
+cat ./inputs/mazefun.input | $S7 /tmp/larcenous/S7/mazefun.scm # 22.762s
+
+cat ./inputs/ack.input | guile /tmp/larcenous/Guile/ack.scm # 18.6s
+cat ./inputs/ack.input | guile --no-auto-compile /tmp/larcenous/Guile/ack.scm # omg..never ending
+
+mv ./results.S7 results.S7-2021-05-10
+mv ./results.S7 results.S7-subset-normal
+mv ./results.S7 results.S7-fomit-funroll
+#+end_src
+
+* Visualization - graph
+** R
+   :PROPERTIES:
+   :header-args:sh: :session *R-graph*
+   :header-args:R: :session *R-graph*
+   :END:
+
+   - https://gist.github.com/asimihsan/6937989
+   - [[https://stackoverflow.com/questions/10783770/gnuplot-to-group-multiple-bars][SO: gnuplot group multiple bars]]
+     - https://r-coder.com/save-plot-r/
+*** Installing
+    #+begin_src sh
+sudo apt-get install r-base   
+    #+end_src
+*** Graph
+    #+begin_src sh
+R
+    #+end_src
+
+    #+begin_src R
+library(ggplot2)
+
+data <- read.csv("./csv/all.rows.csv", sep = ',')
+
+# dev.new(width=10,height=5,noRStudioGD = TRUE)
+# to set the size of the pop-up plot window
+# or, write to png:
+png("results.png", width = 1000)
+ggplot(data, aes(x=scheme, y=time)) + geom_col(width = 0.5, aes(fill = test), position = "dodge") + labs(y = "time (seconds)")  + theme(text = element_text(size=17)) 
+dev.off() # if writing to png, write & close the file
+    #+end_src
+** COMMENT GNUplot
+   :PROPERTIES:
+   :header-args:sh: :session *gnuplot*
+   :END:
+
+   - https://stackoverflow.com/questions/37953812/group-bar-chart-graph-with-two-different-y-axis-scales-in-gnuplot
+   #+begin_src sh
+sudo apt install gnuplot-x11
+
+gnuplot
+
+set datafile separator '\t'
+
+set boxwidth 0.9 relative
+set style data histograms
+set style histogram cluster
+set style fill solid 1.0 border lt -1
+plot for [COL=1:4] 'csv/all.csv' using COL
+
+plot '' u 5:key(1)            # uses first column to generate key titles
+plot '' u 5 title columnhead
+
+set style histogram columnstacked
+plot for [i=1:10] "csv/all.csv" using i title columnhead
+
+# plot '' u 1:key(1)            # uses first column to generate key titles
+# plot '' u 5 title columnhead  # uses first row to generate xtic labels
+   #+end_src
+
+   #+begin_src sh
+reset
+set style histogram cluster gap 1
+set style data histograms
+set style fill solid 1.00 border
+set yrange [0:]
+set ytics nomirror
+set y2range [0:]
+set y2tics
+
+
+
+set key right autotitle columnheader
+plot 'csv/all.csv' u 2 every ::::0, '' u 3:xtic(1) every ::::0, newhistogram lt 1 at 1, 'csv/all.csv' u 2 every ::1::1 axes x1y1, '' u 3:xtic(1) every ::1::1 axes x1y2
+   #+end_src
+** COMMENT Vega-lite
+   https://vega.github.io/vega-lite/examples/bar_grouped.html
+   #+begin_src sh
+npm install -g vega-cli vega-lite vega canvas
+
+{
+  "data": {"url": "data/seattle-weather.csv"},
+  "mark": "bar",
+  "encoding": {
+    "x": {"timeUnit": "month", "field": "date"},
+    "y": {"aggregate": "mean", "field": "precipitation"}
+  }
+}
+
+vg2png --help
+vg2png --config "$(jo data=$(jo url="./csv/all.csv") mark=bar)" out.png
+
+vl2png ./csv/config.json out.png
+
+vl2png -s 2 ./csv/demo.json out.png 
+
+vl2png --help
+   #+end_src
+* Subset of tests
+  #+begin_src sh
+scheme mbrot ray fft fibc browse ntakl gcbench mazefun destruc array1 diviter fib primes fibfp
+  
+  #+end_src
+* parsing the csv [0/1]
+** TODO fix the output
+   - the =mit ULIMITKILLED= in fibc had different namings in the results.MIT and thus in the all.csv
+** awk
+   #+begin_src sh
+awk -F, -f process.awk all.csv > processed.csv
+
+awk -F, -f process.awk ./csv/all.rows.csv > ./csv/all.csv
+   #+end_src
+** miller?
+   #+begin_src sh
+sudo apt-get install miller
+
+mlr --n2p --ifs "," label key,property,emptyfield,value \
+then reshape -s key,value \
+then unsparsify \
+then cut -x -f emptyfield all.csv
+  
+   #+end_src
+* Chez (& petite)
+  #+begin_src sh
+scheme
+# or
+chezscheme
+petite
+  #+end_src
+** Installing
+   #+begin_src sh
+sudo apt-get install chezscheme # 9.5 at ubuntu 20.04, but 9.5.4 is also available
+   #+end_src
+** R7RS Compatibility
+   #+begin_src sh
+git clone https://github.com/ecraven/chez-scheme-libraries.git  
+git clone https://github.com/ovenpasta/thunderchez.git # (srfi :9), needs some extra modifications
+   #+end_src
+
+* S7
+  :PROPERTIES:
+  :header-args:sh: :session *s7* :shell-type vterm
+  :END:
+
+  After building:
+  #+begin_src sh
+./s7/s7
+  #+end_src
+** Cloning from the repository
+   #+begin_src sh
+openssl s_client -showcerts -servername cm-gitlab.stanford.edu -connect cm-gitlab.stanford.edu:443 </dev/null 2>/dev/null | sed -n -e '/BEGIN\ CERTIFICATE/,/END\ CERTIFICATE/ p'  > cm-gitlab.stanford.edu.pem
+
+# the following command writes to ~/.gitconfig
+git config --global http."https://cm-gitlab.stanford.edu".sslCAInfo cm-gitlab.stanford.edu.pem
+
+clone https://cm-gitlab.stanford.edu/bil/s7.git
+   #+end_src
+
+** Building
+   #+begin_src sh
+cd s7
+touch mus-config.h
+# Bil suggests the following flags for the timing tests: -fomit-frame-pointer -funroll-loops -march=native
+gcc s7.c -o s7 -DWITH_MAIN -I. -O2 -g -ldl -lm -Wl,-export-dynamic -Wno-stringop-overflow -fomit-frame-pointer -funroll-loops -march=native
+
+# done
+cd ..
+   #+end_src
+* Gauche
+  :PROPERTIES:
+  :header-args:sh: :session *gauche*
+  :END:
+
+  After installing:
+  #+begin_src sh
+./gauche/bin/gosh  
+  #+end_src
+
+** Installing
+   #+begin_src sh
+wget https://raw.githubusercontent.com/shirok/get-gauche/master/get-gauche.sh
+
+# putting "gauche" as the installation dir when asked, puts this into this folder
+bash ./get-gauche.sh
+
+# try it out
+./gauche/bin/gosh
+
+# needed for some things
+sudo apt-get install slib
+   #+end_src
+* Guile
+  After installing:
+  #+begin_src sh
+guile # defaults to guile 3
+
+guile-3.0
+guile-2.0
+
+locate guile
+  #+end_src
+
+** Installing (v2 & v3)
+   #+begin_src sh
+# guile-3.0-dev is needed for the "guild" executable, which compiles a scheme program
+sudo apt install guile-3.0 guile-3.0-dev -y
+
+sudo apt install guile-2.2 guile-2.2-dev -y
+   #+end_src
+   
+* COMMENT old notes - REMOVEME
